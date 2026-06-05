@@ -282,7 +282,7 @@ streamlit run web/app.py
 | `max_debate_rounds` | `1` | Bull vs Bear 辩论轮数 |
 | `max_risk_discuss_rounds` | `1` | 风险三方辩论轮数 |
 | `data_vendors` | 全部 `"a_stock"` | 数据供应商路由 |
-| `checkpoint_enabled` | `False` | 启用 SQLite 断点续跑 |
+| `checkpoint_enabled` | `True` | 启用 SQLite 断点续跑 |
 | `memory_log_max_entries` | `None` | 交易记忆最大条目数 |
 
 ---

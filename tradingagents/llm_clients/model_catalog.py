@@ -30,6 +30,7 @@ MODEL_OPTIONS: ProviderModeOptions = {
             ("Claude Sonnet 4.5 - Agents and coding", "claude-sonnet-4-5"),
         ],
         "deep": [
+            ("Claude Opus 4.8 - Most intelligent, agents and coding", "claude-opus-4-8"),
             ("Claude Opus 4.6 - Most intelligent, agents and coding", "claude-opus-4-6"),
             ("Claude Opus 4.5 - Premium, max intelligence", "claude-opus-4-5"),
             ("Claude Sonnet 4.6 - Best speed and intelligence balance", "claude-sonnet-4-6"),
@@ -103,11 +104,13 @@ MODEL_OPTIONS: ProviderModeOptions = {
     },
     "minimax": {
         "quick": [
+            ("MiniMax-M3 - Latest flagship model", "MiniMax-M3"),
             ("MiniMax-M2.7-highspeed - Latest fast model", "MiniMax-M2.7-highspeed"),
             ("MiniMax-M2.5-highspeed - Stable fast model", "MiniMax-M2.5-highspeed"),
             ("Custom model ID", "custom"),
         ],
         "deep": [
+            ("MiniMax-M3 - Latest flagship model", "MiniMax-M3"),
             ("MiniMax-M2.7 - Latest flagship model", "MiniMax-M2.7"),
             ("MiniMax-M2.5 - Stable flagship model", "MiniMax-M2.5"),
             ("MiniMax-M2.7-highspeed - Fast alternative", "MiniMax-M2.7-highspeed"),

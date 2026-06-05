@@ -75,6 +75,38 @@ _name_to_code: dict[str, str] | None = None
 _code_to_name: dict[str, str] | None = None
 
 
+def _resolve_ticker_eastmoney(name: str) -> str | None:
+    """Resolve one A-stock name through East Money when mootdx is unavailable."""
+    url = "https://searchapi.eastmoney.com/api/suggest/get"
+    params = {
+        "input": name,
+        "type": "14",
+        "token": "D43BF722C8E33BDC906FB84D85E326E8",
+    }
+    response = _em_get(url, params=params, timeout=10)
+    response.raise_for_status()
+    items = response.json().get("QuotationCodeTable", {}).get("Data", []) or []
+
+    clean = name.replace(" ", "").replace("　", "")
+    matches: dict[str, str] = {}
+    for item in items:
+        code = str(item.get("Code", "")).strip()
+        item_name = str(item.get("Name", "")).strip().replace(" ", "").replace("　", "")
+        if item.get("Classify") != "AStock" or not _re.match(r"^[036]\d{5}$", code):
+            continue
+        if item_name == clean:
+            return code
+        if clean in item_name:
+            matches[item_name] = code
+
+    if len(matches) == 1:
+        return next(iter(matches.values()))
+    if len(matches) > 1:
+        examples = ", ".join(f"{item_name}({code})" for item_name, code in matches.items())
+        raise ValueError(f"'{name}' 匹配到多只股票: {examples}，请输入完整名称或代码")
+    return None
+
+
 def _build_name_code_map() -> tuple[dict[str, str], dict[str, str]]:
     """Build name→code and code→name maps via mootdx (both SH & SZ markets)."""
     global _name_to_code, _code_to_name
@@ -123,7 +155,14 @@ def resolve_ticker(user_input: str) -> str:
         return _normalize_ticker(s)
 
     clean = s.replace(" ", "").replace("　", "")
-    n2c, _ = _build_name_code_map()
+    try:
+        n2c, _ = _build_name_code_map()
+    except Exception as exc:
+        logger.warning("mootdx name-code map unavailable, falling back to East Money: %s", exc)
+        resolved = _resolve_ticker_eastmoney(clean)
+        if resolved:
+            return resolved
+        raise ValueError(f"找不到股票 '{s}'，请检查名称是否正确") from exc
 
     if clean in n2c:
         return n2c[clean]

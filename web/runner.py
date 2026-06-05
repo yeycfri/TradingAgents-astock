@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import re
 import threading
 from typing import Any
 
 from web.progress import PIPELINE_STAGES, ProgressTracker
+
+logger = logging.getLogger(__name__)
 
 
 _REPORT_KEY_TO_STAGE = {s["report_key"]: s["id"] for s in PIPELINE_STAGES}
@@ -117,6 +120,7 @@ def run_analysis_in_thread(
         try:
             _run(ticker, trade_date, config, tracker)
         except Exception as exc:
+            logger.exception("Web analysis failed for %s on %s", ticker, trade_date)
             tracker.mark_error(str(exc))
 
     t = threading.Thread(target=_target, daemon=True)

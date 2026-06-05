@@ -941,7 +941,7 @@ def format_tool_args(args, max_length=80) -> str:
         return result[:max_length - 3] + "..."
     return result
 
-def run_analysis(checkpoint: bool = False):
+def run_analysis(checkpoint: bool = True):
     # First get all user selections
     selections = get_user_selections()
 
@@ -1229,8 +1229,8 @@ def run_analysis(checkpoint: bool = False):
 @app.command()
 def analyze(
     checkpoint: bool = typer.Option(
-        False,
-        "--checkpoint",
+        True,
+        "--checkpoint/--no-checkpoint",
         help="Enable checkpoint/resume: save state after each node so a crashed run can resume.",
     ),
     clear_checkpoints: bool = typer.Option(

@@ -169,8 +169,8 @@ def _build_config() -> dict:
         "news_data": "a_stock",
         "signal_data": "a_stock",
     }
-    config["max_debate_rounds"] = 1
-    config["max_risk_discuss_rounds"] = 1
+    config["max_debate_rounds"] = 3
+    config["max_risk_discuss_rounds"] = 3
     config["output_language"] = "Chinese"
     return config
 

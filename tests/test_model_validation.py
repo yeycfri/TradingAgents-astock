@@ -4,7 +4,7 @@ import warnings
 import pytest
 
 from tradingagents.llm_clients.base_client import BaseLLMClient
-from tradingagents.llm_clients.model_catalog import get_known_models
+from tradingagents.llm_clients.model_catalog import get_known_models, get_model_options
 from tradingagents.llm_clients.validators import validate_model
 
 
@@ -23,6 +23,12 @@ class DummyLLMClient(BaseLLMClient):
 
 @pytest.mark.unit
 class ModelValidationTests(unittest.TestCase):
+    def test_anthropic_deep_models_offer_opus_4_8_first(self):
+        self.assertEqual(
+            get_model_options("anthropic", "deep")[0],
+            ("Claude Opus 4.8 - Most intelligent, agents and coding", "claude-opus-4-8"),
+        )
+
     def test_cli_catalog_models_are_all_validator_approved(self):
         for provider, models in get_known_models().items():
             if provider in ("ollama", "openrouter"):
