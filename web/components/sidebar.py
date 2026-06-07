@@ -15,6 +15,7 @@ _PROVIDERS: list[tuple[str, str]] = [
     ("DeepSeek", "deepseek"),
     ("通义千问 Qwen", "qwen"),
     ("智谱 GLM", "glm"),
+    ("小米 MiMo", "xiaomi"),
     ("OpenAI", "openai"),
     ("Anthropic", "anthropic"),
     ("Google Gemini", "google"),
@@ -96,6 +97,7 @@ def _render_llm_config() -> None:
             "且每个供应商用各自的环境变量——"
             "OpenAI=OPENAI_API_KEY、DeepSeek=DEEPSEEK_API_KEY、"
             "通义=DASHSCOPE_API_KEY、智谱=ZHIPU_API_KEY、MiniMax=MINIMAX_API_KEY、"
+            "小米 MiMo=XIAOMI_API_KEY、"
             "Claude=ANTHROPIC_API_KEY、OpenRouter=OPENROUTER_API_KEY、xAI=XAI_API_KEY。"
             "也可在 .env 里设 BACKEND_URL 代替此处。"
         ),

@@ -1,6 +1,7 @@
 import os
 from typing import Any, Optional
 
+import httpx
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
 
@@ -113,12 +114,15 @@ _PASSTHROUGH_KWARGS = (
 _PROVIDER_CONFIG = {
     "xai": ("https://api.x.ai/v1", "XAI_API_KEY"),
     "deepseek": ("https://api.deepseek.com", "DEEPSEEK_API_KEY"),
-    "qwen": ("https://dashscope-intl.aliyuncs.com/compatible-mode/v1", "DASHSCOPE_API_KEY"),
+    "qwen": ("https://dashscope.aliyuncs.com/compatible-mode/v1", "DASHSCOPE_API_KEY"),
     "glm": ("https://api.z.ai/api/paas/v4/", "ZHIPU_API_KEY"),
     "openrouter": ("https://openrouter.ai/api/v1", "OPENROUTER_API_KEY"),
     "ollama": ("http://localhost:11434/v1", None),
     "minimax": ("https://api.minimax.chat/v1", "MINIMAX_API_KEY"),
+    "xiaomi": ("https://api.xiaomimimo.com/v1", "XIAOMI_API_KEY"),
 }
+
+_NO_PROXY_PROVIDERS = {"deepseek", "qwen", "glm", "ollama", "minimax", "xiaomi"}
 
 
 class OpenAIClient(BaseLLMClient):
@@ -157,7 +161,7 @@ class OpenAIClient(BaseLLMClient):
                     llm_kwargs["api_key"] = api_key
                 elif "api_key" not in self.kwargs:
                     # Without this, ChatOpenAI fails downstream with a confusing
-                    # "OPENAI_API_KEY must be set" — but deepseek/qwen/glm/minimax
+                    # "OPENAI_API_KEY must be set" — but deepseek/qwen/glm/minimax/xiaomi
                     # each need their OWN env var. Name the exact one (#42).
                     raise RuntimeError(
                         f"未找到 {self.provider} 的 API Key。请在 .env 文件或环境变量中设置 "
@@ -173,6 +177,10 @@ class OpenAIClient(BaseLLMClient):
         for key in _PASSTHROUGH_KWARGS:
             if key in self.kwargs:
                 llm_kwargs[key] = self.kwargs[key]
+
+        if self.provider in _NO_PROXY_PROVIDERS:
+            llm_kwargs.setdefault("http_client", httpx.Client(trust_env=False))
+            llm_kwargs.setdefault("http_async_client", httpx.AsyncClient(trust_env=False))
 
         # Native OpenAI: use Responses API for consistent behavior across
         # all model families. Third-party providers use Chat Completions.

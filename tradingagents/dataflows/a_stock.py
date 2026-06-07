@@ -25,7 +25,6 @@ import random
 import re as _re
 import time
 import uuid
-import urllib.request
 
 import pandas as pd
 import requests as _requests
@@ -205,10 +204,9 @@ def _tencent_quote(codes: list[str]) -> dict[str, dict]:
     """
     prefixed = [f"{_get_prefix(c)}{c}" for c in codes]
     url = "https://qt.gtimg.cn/q=" + ",".join(prefixed)
-    req = urllib.request.Request(url)
-    req.add_header("User-Agent", "Mozilla/5.0")
-    resp = urllib.request.urlopen(req, timeout=10)
-    raw = resp.read().decode("gbk")
+    resp = _direct_get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+    resp.raise_for_status()
+    raw = resp.content.decode("gbk")
 
     result = {}
     for line in raw.strip().split(";"):
@@ -247,6 +245,19 @@ _DATACENTER_URL = "https://datacenter-web.eastmoney.com/api/data/v1/get"
 _UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 
 
+# Domestic data sources should not inherit machine-level http_proxy/https_proxy.
+_DIRECT_SESSION = _requests.Session()
+_DIRECT_SESSION.trust_env = False
+_DIRECT_SESSION.headers.update({"User-Agent": _UA})
+
+
+def _direct_get(url, params=None, headers=None, timeout=15, **kwargs):
+    """Direct HTTP GET for domestic data vendors, ignoring env proxy settings."""
+    return _DIRECT_SESSION.get(
+        url, params=params, headers=headers, timeout=timeout, **kwargs
+    )
+
+
 # ---------------------------------------------------------------------------
 # 东财防封：全局节流 + 会话复用 (Eastmoney anti-ban: throttle + Keep-Alive)
 # ---------------------------------------------------------------------------
@@ -257,6 +268,7 @@ _UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
 # 注意：仅东财接口走此入口；mootdx(TCP) / 腾讯 / 新浪 / 同花顺 / 财联社 / 百度 等
 # 不限流（实测不封 IP 或风控极弱）。批量任务可调大 EM_MIN_INTERVAL 进一步降速。
 _EM_SESSION = _requests.Session()
+_EM_SESSION.trust_env = False
 _EM_SESSION.headers.update({"User-Agent": _UA})
 # 两次东财请求最小间隔(秒)；批量多 Agent 场景可设环境变量 EM_MIN_INTERVAL=1.5~2 降速。
 _EM_MIN_INTERVAL = float(os.environ.get("EM_MIN_INTERVAL", "1.0"))
@@ -323,7 +335,7 @@ def _ths_eps_forecast(code: str) -> pd.DataFrame:
         "User-Agent": _UA,
         "Referer": "https://basic.10jqka.com.cn/",
     }
-    r = _requests.get(url, headers=headers, timeout=15)
+    r = _direct_get(url, headers=headers, timeout=15)
     r.encoding = "gbk"
     dfs = pd.read_html(r.text)
     # Find the table containing EPS data
@@ -356,7 +368,7 @@ def _sina_kline_fallback(code: str, start_date: str = None, end_date: str = None
         "ma": "no",
         "datalen": "800",
     }
-    r = _requests.get(url, params=params, timeout=15)
+    r = _direct_get(url, params=params, timeout=15)
     r.raise_for_status()
     data = _json.loads(r.text)
 
@@ -826,15 +838,13 @@ def _get_financial_report_sina(
         "page": "1",
         "num": "20",
     }
-    r = _requests.get(url, params=params, headers={"User-Agent": _UA}, timeout=15)
+    r = _direct_get(url, params=params, headers={"User-Agent": _UA}, timeout=15)
     d = r.json()
 
     result = d.get("result", {}).get("data", {})
-    items = result.get(source_type, [])
-    if not isinstance(items, list) or not items:
+    df = _parse_sina_financial_report(result, source_type)
+    if df.empty:
         return pd.DataFrame()
-
-    df = pd.DataFrame(items)
 
     # Filter by curr_date
     if curr_date and "报告日" in df.columns:
@@ -847,7 +857,46 @@ def _get_financial_report_sina(
         months = pd.to_datetime(df["报告日"], errors="coerce").dt.month
         df = df[months == 12]
 
+    if "报告日" in df.columns:
+        df["报告日"] = pd.to_datetime(df["报告日"], errors="coerce").dt.strftime("%Y-%m-%d")
+
     return df.head(8)
+
+
+def _parse_sina_financial_report(result: dict, source_type: str) -> pd.DataFrame:
+    """Parse Sina finance report payloads across old and current schemas."""
+    old_items = result.get(source_type, [])
+    if isinstance(old_items, list) and old_items:
+        return pd.DataFrame(old_items)
+
+    report_list = result.get("report_list", {})
+    if not isinstance(report_list, dict) or not report_list:
+        return pd.DataFrame()
+
+    rows = []
+    for period, payload in sorted(report_list.items(), reverse=True):
+        if not isinstance(payload, dict):
+            continue
+        items = payload.get("data", [])
+        if not isinstance(items, list):
+            continue
+
+        row = {"报告日": pd.to_datetime(str(period), format="%Y%m%d", errors="coerce")}
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            title = str(item.get("item_title", "")).strip()
+            if not title:
+                continue
+            value = item.get("item_value")
+            if value in ("", None):
+                continue
+            row[title] = value
+
+        if len(row) > 1:
+            rows.append(row)
+
+    return pd.DataFrame(rows)
 
 
 def get_balance_sheet(
@@ -1010,7 +1059,7 @@ def _fetch_news_sina(code: str, page_size: int = 20) -> list[dict]:
         "Referer": "https://finance.sina.com.cn/",
     }
 
-    resp = _requests.get(url, headers=headers, timeout=15)
+    resp = _direct_get(url, headers=headers, timeout=15)
     resp.raise_for_status()
     resp.encoding = "gb2312"
     html = resp.text
@@ -1120,7 +1169,7 @@ def get_global_news(
         cls_url = "https://www.cls.cn/nodeapi/telegraphList"
         cls_params = {"rn": str(limit), "page": "1"}
         cls_headers = {"User-Agent": _UA, "Referer": "https://www.cls.cn/"}
-        r_cls = _requests.get(cls_url, params=cls_params, headers=cls_headers, timeout=10)
+        r_cls = _direct_get(cls_url, params=cls_params, headers=cls_headers, timeout=10)
         d_cls = r_cls.json()
         for item in d_cls.get("data", {}).get("roll_data", []):
             title = item.get("title", "") or item.get("brief", "")
@@ -1351,8 +1400,6 @@ def get_hot_stocks(
     Returns stocks that hit limit-up with human-curated reason tags
     explaining WHY they surged (e.g. '算力租赁+AI政务').
     """
-    import requests
-
     if not curr_date or curr_date.strip() == "":
         curr_date = datetime.now().strftime("%Y-%m-%d")
 
@@ -1367,7 +1414,7 @@ def get_hot_stocks(
                 "Chrome/117.0.0.0 Safari/537.36"
             )
         }
-        r = requests.get(url, headers=headers, timeout=10)
+        r = _direct_get(url, headers=headers, timeout=10)
         data = r.json()
 
         if data.get("errocode", 0) != 0:
@@ -1491,8 +1538,6 @@ def get_northbound_flow(
     History: self-cached daily close snapshots (upstream APIs stopped updating
     northbound history since 2024-08).
     """
-    import requests
-
     hsgt_headers = {
         "User-Agent": (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -1514,7 +1559,7 @@ def get_northbound_flow(
 
     try:
         url_rt = "https://data.hexin.cn/market/hsgtApi/method/dayChart/"
-        r = requests.get(url_rt, headers=hsgt_headers, timeout=10)
+        r = _direct_get(url_rt, headers=hsgt_headers, timeout=10)
         d = r.json()
 
         times = d.get("time", [])
@@ -1608,8 +1653,6 @@ def get_concept_blocks(
     Returns industry classification (申万), concept themes, and region.
     Each block includes current day's change percentage.
     """
-    import requests
-
     code = _normalize_ticker(ticker)
 
     try:
@@ -1618,7 +1661,7 @@ def get_concept_blocks(
             f'?stock=[{{"code":"{code}","market":"ab","type":"stock"}}]'
             "&finClientType=pc"
         )
-        r = requests.get(url, headers=_BAIDU_PAE_HEADERS, timeout=10)
+        r = _direct_get(url, headers=_BAIDU_PAE_HEADERS, timeout=10)
         d = r.json()
 
         if str(d.get("ResultCode", -1)) != "0":

@@ -24,10 +24,10 @@ def _signal_style(signal: str) -> tuple[str, str]:
 
 
 _ANALYST_SECTIONS = [
-    ("market_report", "📊 技术分析"),
+    ("fundamentals_report", "📋 基本面"),
     ("sentiment_report", "💬 市场情绪"),
     ("news_report", "📰 新闻舆情"),
-    ("fundamentals_report", "📋 基本面"),
+    ("market_report", "📊 技术分析"),
     ("policy_report", "🏛️ 政策分析"),
     ("hot_money_report", "🔥 游资追踪"),
     ("lockup_report", "🔒 解禁/减持"),

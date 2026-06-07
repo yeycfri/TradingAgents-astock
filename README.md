@@ -171,21 +171,25 @@ MINIMAX_API_KEY=sk-xxx
 DEEPSEEK_API_KEY=sk-xxx
 # 申请地址：https://platform.deepseek.com/
 
-# ── 方案 C：智谱 GLM ─────────────────────────────────
+# ── 方案 C：小米 MiMo ───────────────────────────────
+XIAOMI_API_KEY=sk-xxx
+# 申请地址：https://platform.xiaomimimo.com/
+
+# ── 方案 D：智谱 GLM ─────────────────────────────────
 ZHIPU_API_KEY=xxx
 # 申请地址：https://open.bigmodel.cn/
 
-# ── 方案 D：通义千问 Qwen ────────────────────────────
+# ── 方案 E：通义千问 Qwen ────────────────────────────
 DASHSCOPE_API_KEY=sk-xxx
 # 申请地址：https://dashscope.console.aliyun.com/
 
-# ── 方案 E：OpenAI ───────────────────────────────────
+# ── 方案 F：OpenAI ───────────────────────────────────
 OPENAI_API_KEY=sk-xxx
 
-# ── 方案 F：Anthropic ────────────────────────────────
+# ── 方案 G：Anthropic ────────────────────────────────
 ANTHROPIC_API_KEY=sk-ant-xxx
 
-# ── 方案 G：Kimi（Anthropic 兼容 API）────────────────
+# ── 方案 H：Kimi（Anthropic 兼容 API）────────────────
 ANTHROPIC_AUTH_TOKEN=your-kimi-token
 ```
 
@@ -209,6 +213,14 @@ config = {
 #     "llm_provider": "deepseek",
 #     "deep_think_llm": "deepseek-chat",
 #     "quick_think_llm": "deepseek-chat",
+#     "output_language": "Chinese",
+# }
+
+# ── 小米 MiMo 示例 ─────────────────────────────────
+# config = {
+#     "llm_provider": "xiaomi",
+#     "deep_think_llm": "mimo-v2.5-pro",
+#     "quick_think_llm": "mimo-v2.5",
 #     "output_language": "Chinese",
 # }
 
@@ -274,7 +286,7 @@ streamlit run web/app.py
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `llm_provider` | `"minimax"` | LLM 提供商：`minimax` / `deepseek` / `qwen` / `glm` / `openai` / `anthropic` / `google` / `xai` / `ollama` |
+| `llm_provider` | `"minimax"` | LLM 提供商：`minimax` / `deepseek` / `xiaomi` / `qwen` / `glm` / `openai` / `anthropic` / `google` / `xai` / `ollama` |
 | `deep_think_llm` | `"MiniMax-M2.7"` | Research Manager + Portfolio Manager 用的模型 |
 | `quick_think_llm` | `"MiniMax-M2.7-highspeed"` | 所有 Analyst / Researcher / Trader 用的模型 |
 | `backend_url` | `None` | 自定义 API 端点 / 第三方中转网关。可在 Web UI 侧边栏填写，或用 `.env` 的 `BACKEND_URL`；方便国内通过代理访问 Claude / OpenAI |
