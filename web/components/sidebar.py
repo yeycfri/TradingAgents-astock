@@ -42,6 +42,17 @@ def _resolve_user_input(raw: str) -> tuple[str, str | None]:
         return "", str(e)
 
 
+def _history_label(entry: dict[str, str]) -> str:
+    """Format a history entry for the sidebar button."""
+
+    ticker = entry["ticker"]
+    trade_date = entry["date"].replace("-", ".")
+    stock_name = entry.get("stock_name", "").strip()
+    if stock_name:
+        return f"{ticker}-{stock_name}-{trade_date}"
+    return f"{ticker}-{trade_date}"
+
+
 def _render_llm_config() -> None:
     """Render LLM provider and model selection controls."""
 
@@ -172,7 +183,7 @@ def render_sidebar() -> None:
 
     for entry in history[:20]:
         t, d = entry["ticker"], entry["date"]
-        label = f"{t}  ·  {d}"
+        label = _history_label(entry)
         if st.button(label, key=f"hist_{t}_{d}", use_container_width=True):
             st.session_state["viewing_history"] = entry["path"]
             st.session_state["start_analysis"] = None

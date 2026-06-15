@@ -72,6 +72,29 @@ def _normalize_ticker(symbol: str) -> str:
 
 _name_to_code: dict[str, str] | None = None
 _code_to_name: dict[str, str] | None = None
+_DEFAULT_MOOTDX_SERVER = ("110.41.147.114", 7709)
+
+
+def _is_empty_mootdx_server_error(exc: Exception) -> bool:
+    return isinstance(exc, ValueError) and "not enough values to unpack" in str(exc)
+
+
+def _create_mootdx_client():
+    """Create a mootdx std client, tolerating empty BESTIP.HQ in user config."""
+
+    from mootdx.quotes import Quotes
+
+    try:
+        return Quotes.factory(market="std")
+    except Exception as exc:
+        if not _is_empty_mootdx_server_error(exc):
+            raise
+        logger.warning(
+            "mootdx BESTIP.HQ is empty; retrying with default server %s:%s",
+            _DEFAULT_MOOTDX_SERVER[0],
+            _DEFAULT_MOOTDX_SERVER[1],
+        )
+        return Quotes.factory(market="std", server=_DEFAULT_MOOTDX_SERVER)
 
 
 def _resolve_ticker_eastmoney(name: str) -> str | None:
@@ -112,9 +135,7 @@ def _build_name_code_map() -> tuple[dict[str, str], dict[str, str]]:
     if _name_to_code is not None:
         return _name_to_code, _code_to_name
 
-    from mootdx.quotes import Quotes
-
-    client = Quotes.factory(market="std")
+    client = _create_mootdx_client()
     n2c: dict[str, str] = {}
     c2n: dict[str, str] = {}
 
@@ -187,9 +208,7 @@ def _get_mootdx_client():
     """Lazy-init mootdx Quotes client (TCP connection, reusable)."""
     global _mootdx_client
     if _mootdx_client is None:
-        from mootdx.quotes import Quotes
-
-        _mootdx_client = Quotes.factory(market="std")
+        _mootdx_client = _create_mootdx_client()
     return _mootdx_client
 
 
