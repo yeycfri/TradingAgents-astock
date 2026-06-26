@@ -21,14 +21,17 @@ from tradingagents.default_config import DEFAULT_CONFIG  # noqa: E402
 from web.components.progress_panel import render_progress  # noqa: E402
 from web.components.report_viewer import render_report  # noqa: E402
 from web.components.sidebar import render_sidebar  # noqa: E402
+from web.config_defaults import WEB_MAX_DEBATE_ROUNDS, WEB_MAX_RISK_DISCUSS_ROUNDS  # noqa: E402
 from web.history import extract_signal, load_analysis  # noqa: E402
+from web.llm_defaults import DEFAULT_DEEP_MODEL, DEFAULT_LLM_PROVIDER, DEFAULT_QUICK_MODEL  # noqa: E402
+from web.page_title import DEFAULT_PAGE_TITLE, analysis_page_title, page_config_title, render_browser_title  # noqa: E402
 from web.progress import ProgressTracker  # noqa: E402
 from web.runner import run_analysis_in_thread  # noqa: E402
 
 # ── Page config ──────────────────────────────────────────────────────────────
 
 st.set_page_config(
-    page_title="TradingAgents-Astock A股分析",
+    page_title=page_config_title(st.session_state),
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -156,9 +159,9 @@ st.markdown(
 
 def _build_config() -> dict:
     config = DEFAULT_CONFIG.copy()
-    config["llm_provider"] = st.session_state.get("llm_provider", "minimax")
-    config["deep_think_llm"] = st.session_state.get("deep_think_llm", "MiniMax-M2.7")
-    config["quick_think_llm"] = st.session_state.get("quick_think_llm", "MiniMax-M2.7-highspeed")
+    config["llm_provider"] = st.session_state.get("llm_provider", DEFAULT_LLM_PROVIDER)
+    config["deep_think_llm"] = st.session_state.get("deep_think_llm", DEFAULT_DEEP_MODEL)
+    config["quick_think_llm"] = st.session_state.get("quick_think_llm", DEFAULT_QUICK_MODEL)
     # Optional third-party / proxy endpoint. Sidebar input wins, else .env BACKEND_URL.
     backend_url = (st.session_state.get("llm_base_url") or os.getenv("BACKEND_URL") or "").strip()
     config["backend_url"] = backend_url or None
@@ -169,8 +172,8 @@ def _build_config() -> dict:
         "news_data": "a_stock",
         "signal_data": "a_stock",
     }
-    config["max_debate_rounds"] = 3
-    config["max_risk_discuss_rounds"] = 3
+    config["max_debate_rounds"] = WEB_MAX_DEBATE_ROUNDS
+    config["max_risk_discuss_rounds"] = WEB_MAX_RISK_DISCUSS_ROUNDS
     config["output_language"] = "Chinese"
     return config
 
@@ -210,18 +213,21 @@ if viewing_history:
         signal = extract_signal(state)
         ticker = Path(viewing_history).parent.parent.name
         trade_date = Path(viewing_history).stem.replace("full_states_log_", "")
+        render_browser_title(analysis_page_title(ticker, trade_date))
         render_report(state, ticker, trade_date, signal)
     except Exception as exc:
         st.error(f"加载失败: {exc}")
 
 # State 2: Analysis running
 elif tracker and tracker.is_running:
+    render_browser_title(analysis_page_title(tracker.ticker, tracker.trade_date))
     render_progress(tracker)
     time.sleep(2)
     st.rerun()
 
 # State 3: Analysis complete
 elif tracker and tracker.is_complete:
+    render_browser_title(analysis_page_title(tracker.ticker, tracker.trade_date))
     render_report(
         tracker.final_state,
         tracker.ticker,
@@ -232,6 +238,7 @@ elif tracker and tracker.is_complete:
 
 # State 4: Analysis errored
 elif tracker and tracker.error:
+    render_browser_title(DEFAULT_PAGE_TITLE)
     st.error(f"分析失败: {tracker.error}")
     if st.button("重试"):
         st.session_state.pop("tracker", None)
@@ -239,6 +246,7 @@ elif tracker and tracker.error:
 
 # State 0: Idle — welcome screen
 else:
+    render_browser_title(DEFAULT_PAGE_TITLE)
     st.markdown(
         """
         <div style="

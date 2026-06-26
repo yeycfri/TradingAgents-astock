@@ -21,7 +21,7 @@ class XiaomiMiMoProviderTests(unittest.TestCase):
         chat_cls.assert_called_once()
         kwargs = chat_cls.call_args.kwargs
         self.assertEqual(kwargs["model"], "mimo-v2.5")
-        self.assertEqual(kwargs["base_url"], "https://api.xiaomimimo.com/v1")
+        self.assertEqual(kwargs["base_url"], "https://token-plan-cn.xiaomimimo.com/v1")
         self.assertEqual(kwargs["api_key"], "mimo-key")
         self.assertFalse(kwargs["http_client"].trust_env)
         self.assertFalse(kwargs["http_async_client"].trust_env)
